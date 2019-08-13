@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Simple Cinema Mode for YouTube
 // @namespace    https://greasyfork.org/users/313414
-// @version      1.0
+// @version      1.1
 // @description  Dim the background while watching a YouTube video.
 // @author       Matt-RJ
 // @match        *://*.youtube.com/*
@@ -15,19 +15,40 @@
     var videoContainerOriginalZIndex;
     var countRenderer = null;
 
+    var countRendererCheck;
+    var videoLoadCheck;
+
     start();
 
     function start() {
         waitForCountRendererToLoad(function() {
             waitForVideoToLoad(function() {
-                createCinemaButton();
+                createCinemaButton(function() {
+                    checkForButton();
+                });
             });
         });
     }
 
+    /*
+     * YouTube doesn't refresh the page when changing videos, so if there no button present
+     * (which occurs on video change, which removes any already-presnet button) then
+     * the script is essentially reloaded.
+    */
+    function checkForButton() {
+        let buttonCheck = setInterval(function() {
+            if (!document.getElementById("cinema-mode-button")) {
+                clearInterval(countRendererCheck);
+                clearInterval(videoLoadCheck);
+                clearInterval(buttonCheck);
+                start();
+            }
+        }, 300);
+    }
+
     // Ensures that the count renderer (Where the cinema mode button is placed) has loaded.
     function waitForCountRendererToLoad(callback) {
-        let countRendererCheck = setInterval(checkIfLoaded, 100);
+        countRendererCheck = setInterval(checkIfLoaded, 100);
 
         function checkIfLoaded() {
             countRenderer = document.getElementById("info-text");
@@ -41,7 +62,7 @@
 
     // Ensures that all the relevant DOM elements for the video are loaded before cinema mode is enabled.
     function waitForVideoToLoad(callback) {
-        let videoLoadCheck = setInterval(ytdPlayerIsLoaded, 100);
+        videoLoadCheck = setInterval(ytdPlayerIsLoaded, 100);
 
         function ytdPlayerIsLoaded() {
             let ytdPlayer = document.getElementById("ytd-player");
@@ -55,7 +76,6 @@
     }
 
     function enableCinemaMode() {
-
         // Creates div that covers the entire page, and a selected element (the video) is pushed in front this div.
         cinemaDiv = document.createElement("div");
         cinemaDiv.classList.add("cinemaDiv");
@@ -102,9 +122,10 @@
     }
 
     // Adds a button near the view counter to enable cinema mode.
-    function createCinemaButton() {
+    function createCinemaButton(callback) {
         let button = document.createElement("button");
         button.type = "button";
+        button.id = "cinema-mode-button";
         button.innerHTML = "Cinema Mode";
         button.style.marginLeft = "10px";
         button.style.color = "#FFFFFF";
@@ -116,6 +137,7 @@
         }, false);
 
         countRenderer.appendChild(button);
+        callback();
     }
 
 })();
